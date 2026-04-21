@@ -243,7 +243,7 @@
                 <div class="form-group"><label>Ngưỡng (Tol)</label><input id="val_tol" value="1e-5"></div>
             </div>` : "";
 
-        document.getElementById('m-inputs').innerHTML = m.inputs + extraParams + `<button onclick="modules['${key}'].solve()">TÍNH TOÁN ( ͡° ͜ʖ ͡°)</button>`;
+        document.getElementById('m-inputs').innerHTML = m.inputs + extraParams + `<button onclick="modules['${key}'].solve()">TÍNH TOÁN</button>`;
         document.getElementById('m-results').innerHTML = "";
 
         if (key === 'newton_sys') renderSysInputs('f');
@@ -436,7 +436,7 @@
                 
                 html += `<tr><td>${k+1}</td><td>${formatNum(x)}</td><td class="highlight">${formatNum(x_new)}</td><td>${check.err.toExponential(4)}</td></tr>`;
                 
-                if(check.err > 1e5) throw new Error("Phân kỳ trầm trọng ( ͡° ͜ʖ ͡°)");
+                if(check.err > 1e5) throw new Error("Phân kỳ trầm trọng");
                 if(check.isStop) { x = x_new; break; }
                 x = x_new; k++;
             }
