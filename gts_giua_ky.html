@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTS tool</title>
+    <script src="./math.min.js"></script>
+    <script id="MathJax-script" async src="./mathjax/tex-mml-chtml.js"></script>
+    <style>
+        :root { --primary: #b01e23; --bg: #f8f9fa; --text: #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; margin: 0; }
+        header { background: var(--primary); color: white; padding: 1rem 2rem; box-shadow: 0 2px 5px rgba(0,0,0,0.2); text-align: center; }
+        .container { display: flex; height: calc(100vh - 80px); }
+        
+        /* Sidebar Menu */
+        nav { width: 280px; background: #fff; border-right: 1px solid #ddd; padding: 1rem; overflow-y: auto; }
+        nav h3 { font-size: 1rem; text-transform: uppercase; color: #666; margin-top: 1.5rem; border-bottom: 2px solid var(--primary); padding-bottom: 5px;}
+        .nav-item { display: block; padding: 8px 10px; color: #444; text-decoration: none; border-radius: 4px; margin-bottom: 2px; transition: 0.2s; cursor: pointer; font-size: 0.95rem; }
+        .nav-item:hover { background: #fee; color: var(--primary); }
+        .nav-item.active { background: var(--primary); color: white; font-weight: bold; }
+
+        /* Main Area */
+        main { flex: 1; padding: 2rem; overflow-y: auto; }
+        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 2rem; max-width: 1000px; margin: 0 auto; }
+        
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1rem; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; font-weight: bold; margin-bottom: 0.5rem; color: #555; }
+        input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 1rem; }
+        textarea { resize: vertical; }
+        
+        button { background: var(--primary); color: white; border: none; padding: 12px 25px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; font-size: 1rem; width: 100%; margin-top: 10px; }
+        button:hover { background: #8a151b; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+
+        /* Result Presentation */
+        .section-title { border-left: 5px solid var(--primary); padding-left: 15px; margin: 2rem 0 1rem; color: var(--primary); font-size: 1.2rem; }
+        .logic-step { background: #fff8f8; border-left: 3px solid #ffbcbc; padding: 1rem; margin-bottom: 1rem; color: #444; }
+        .table-wrapper { overflow-x: auto; margin-top: 1rem; box-shadow: 0 0 5px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 0.9rem; font-family: 'Consolas', monospace; }
+        th { background: #f1f3f5; color: #333; }
+        tr:nth-child(even) { background-color: #fafafa; }
+        tr:hover { background-color: #f1f1f1; }
+        .matrix-display { font-family: 'Consolas', monospace; background: #282c34; color: #abb2bf; padding: 15px; border-radius: 5px; white-space: pre; margin: 10px 0; overflow-x: auto; line-height: 1.4; }
+        .success-box { background: #d4edda; color: #155724; padding: 1rem; border-radius: 4px; margin-top: 1.5rem; border: 1px solid #c3e6cb; font-weight: bold; text-align: center; font-size: 1.1rem; }
+        .error-box { background: #f8d7da; color: #721c24; padding: 1rem; border-radius: 4px; margin-top: 1rem; font-weight: bold; }
+        .highlight { font-weight: bold; color: var(--primary); }
+        
+        ul.math-list { margin-top: 0; padding-left: 20px; }
+        ul.math-list li { margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <nav id="sidebar">
+        <h3>1. Phi tuyến 1 ẩn</h3>
+        <div class="nav-item active" onclick="showModule('bisection')">Chia đôi (Bisection)</div>
+        <div class="nav-item" onclick="showModule('newton1')">Newton (Tiếp tuyến)</div>
+        <div class="nav-item" onclick="showModule('secant')">Dây cung (Secant)</div>
+        <div class="nav-item" onclick="showModule('fixed1')">Lặp đơn (Fixed-point)</div>
+
+        <h3>2. Hệ Phi tuyến</h3>
+        <div class="nav-item" onclick="showModule('newton_sys')">Hệ Newton-Raphson</div>
+        <div class="nav-item" onclick="showModule('fixed_sys')">Hệ Lặp đơn</div>
+
+        <h3>3. Hệ Tuyến tính</h3>
+        <div class="nav-item" onclick="showModule('gauss')">Khử Gauss</div>
+        <div class="nav-item" onclick="showModule('gauss_jordan')">Gauss - Jordan</div>
+        <div class="nav-item" onclick="showModule('lu')">Phân tách LU</div>
+        <div class="nav-item" onclick="showModule('cholesky')">Phân tách Cholesky</div>
+        <div class="nav-item" onclick="showModule('jacobi')">Lặp Jacobi</div>
+        <div class="nav-item" onclick="showModule('seidel')">Lặp Gauss-Seidel</div>
+
+        <h3>4. Khác</h3>
+        <div class="nav-item" onclick="showModule('error_calc')">Sai số Thể tích</div>
+    </nav>
+
+    <main id="main-content">
+        <div id="module-container" class="card">
+            <h2 id="m-title" style="margin-top:0; color:var(--primary);">Chọn phương pháp</h2>
+            <p id="m-desc" style="color:#666; font-style:italic; border-bottom:1px solid #eee; padding-bottom:10px;"></p>
+            <div id="m-inputs"></div>
+            <div id="m-results"></div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // --- HELPER FUNCTIONS ---
+    const parseMatrix = (str) => str.trim().split('\n').map(r => r.split(',').map(Number));
+    const parseVector = (str) => str.trim().split(',').map(Number);
+    const formatNum = (num, fix=6) => Number(num).toFixed(fix);
+    const renderMath = () => { if(window.MathJax) MathJax.typesetPromise(); };
+
+    // --- CẤU TRÚC DỮ LIỆU CÁC MODULE ---
+    const modules = {
+        bisection: {
+            title: "Phương pháp Chia đôi", desc: "Tìm nghiệm trong khoảng phân ly [a, b]",
+            inputs: `
+                <div class="form-group"><label>Hàm f(x) = 0</label><input id="f_x" value="x^3 - x - 1"></div>
+                <div class="input-grid">
+                    <div class="form-group"><label>Cận a</label><input id="val_a" value="1"></div>
+                    <div class="form-group"><label>Cận b</label><input id="val_b" value="2"></div>
+                </div>
+            `,
+            solve: solveBisection
+        },
+        newton1: {
+            title: "Phương pháp Newton (1 ẩn)", desc: "Lặp theo công thức: x_{n+1} = x_n - f(x_n)/f'(x_n)",
+            inputs: `
+                <div class="form-group"><label>Hàm f(x) = 0</label><input id="f_x" value="15*x^5 - 12*x^4 + 3*x^2 - 15"></div>
+                <div class="input-grid"><div class="form-group"><label>Điểm đầu x0</label><input id="val_x0" value="12.0"></div></div>
+            `,
+            solve: solveNewton1
+        },
+        secant: {
+            title: "Phương pháp Dây cung", desc: "Xác định điểm Fourier d và nội suy dây cung.",
+            inputs: `
+                <div class="form-group"><label>Hàm f(x) = 0</label><input id="f_x" value="x^3 - x - 1"></div>
+                <div class="input-grid">
+                    <div class="form-group"><label>Cận a</label><input id="val_a" value="1"></div>
+                    <div class="form-group"><label>Cận b</label><input id="val_b" value="2"></div>
+                </div>
+            `,
+            solve: solveSecant
+        },
+        fixed1: {
+            title: "Phương pháp Lặp đơn (1 ẩn)", desc: "Đưa về dạng x = g(x). Kiểm tra điều kiện |g'(x)| < 1.",
+            inputs: `
+                <div class="form-group"><label>Hàm x = g(x)</label><input id="g_x" value="(x+1)^(1/3)"></div>
+                <div class="input-grid"><div class="form-group"><label>Điểm đầu x0</label><input id="val_x0" value="1.5"></div></div>
+            `,
+            solve: solveFixed1
+        },
+        newton_sys: {
+            title: "Hệ phi tuyến: Newton-Raphson", desc: "Sử dụng ma trận Jacobian: X_{n+1} = X_n - J^{-1} * F(X_n). Hỗ trợ 2 đến 5 biến (x1, x2,...).",
+            inputs: `
+                <div class="form-group" style="max-width: 200px;">
+                    <label>Số biến (N):</label>
+                    <select id="sys_n" onchange="renderSysInputs('f')">
+                        <option value="2" selected>2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                </div>
+                <div id="dynamic_sys_inputs"></div>
+            `,
+            solve: solveNewtonSys
+        },
+        fixed_sys: {
+            title: "Hệ phi tuyến: Lặp đơn", desc: "Đưa về dạng X = G(X). Hỗ trợ 2 đến 5 biến (x1, x2,...).",
+            inputs: `
+                <div class="form-group" style="max-width: 200px;">
+                    <label>Số biến (N):</label>
+                    <select id="sys_n" onchange="renderSysInputs('g')">
+                        <option value="2" selected>2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                </div>
+                <div id="dynamic_sys_inputs"></div>
+            `,
+            solve: solveFixedSys
+        },
+        gauss: {
+            title: "Hệ tuyến tính: Khử Gauss", desc: "Biến đổi ma trận mở rộng [A|b] về dạng tam giác trên (có hoán vị).",
+            inputs: `
+                <div class="form-group"><label>Ma trận A</label><textarea id="mat_a" rows="4">17, 1, 3, -1\n4, 18, 0, 2\n-1, 2, 20, 1\n3, -2, 1, 19</textarea></div>
+                <div class="form-group"><label>Vector b</label><input id="vec_b" value="10, 20, 30, 40"></div>
+            `,
+            solve: solveGauss
+        },
+        gauss_jordan: {
+            title: "Hệ tuyến tính: Gauss-Jordan", desc: "Đưa [A|b] về dạng [I|X].",
+            inputs: `
+                <div class="form-group"><label>Ma trận A</label><textarea id="mat_a" rows="3">2, 1, -1\n-3, -1, 2\n-2, 1, 2</textarea></div>
+                <div class="form-group"><label>Vector b</label><input id="vec_b" value="8, -11, -3"></div>
+            `,
+            solve: solveGaussJordan
+        },
+        lu: {
+            title: "Hệ tuyến tính: Phân tách LU", desc: "Phân tách A = L.U (Doolittle: L có đường chéo = 1). Giải Ly=b, Ux=y.",
+            inputs: `
+                <div class="form-group"><label>Ma trận A</label><textarea id="mat_a" rows="3">2, 1, -1\n-3, -1, 2\n-2, 1, 2</textarea></div>
+                <div class="form-group"><label>Vector b</label><input id="vec_b" value="8, -11, -3"></div>
+            `,
+            solve: solveLU
+        },
+        cholesky: {
+            title: "Hệ tuyến tính: Phân tách Cholesky", desc: "A = L.L^T (Ma trận A phải đối xứng, xác định dương).",
+            inputs: `
+                <div class="form-group"><label>Ma trận A (Đối xứng)</label><textarea id="mat_a" rows="3">4, 12, -16\n12, 37, -43\n-16, -43, 98</textarea></div>
+                <div class="form-group"><label>Vector b</label><input id="vec_b" value="1, 2, 3"></div>
+            `,
+            solve: solveCholesky
+        },
+        jacobi: {
+            title: "Hệ tuyến tính: Lặp Jacobi", desc: "Tính x mới hoàn toàn dựa vào x cũ.",
+            inputs: `
+                <div class="form-group"><label>Ma trận A</label><textarea id="mat_a" rows="4">17, 1, 3, -1\n4, 18, 0, 2\n-1, 2, 20, 1\n3, -2, 1, 19</textarea></div>
+                <div class="form-group"><label>Vector b</label><input id="vec_b" value="10, 20, 30, 40"></div>
+                <div class="form-group"><label>Vector x0</label><input id="vec_x0" value="0, 0, 0, 0"></div>
+            `,
+            solve: solveJacobi
+        },
+        seidel: {
+            title: "Hệ tuyến tính: Lặp Gauss-Seidel", desc: "Tính x mới sử dụng ngay các giá trị x vừa được cập nhật.",
+            inputs: `
+                <div class="form-group"><label>Ma trận A</label><textarea id="mat_a" rows="4">17, 1, 3, -1\n4, 18, 0, 2\n-1, 2, 20, 1\n3, -2, 1, 19</textarea></div>
+                <div class="form-group"><label>Vector b</label><input id="vec_b" value="10, 20, 30, 40"></div>
+                <div class="form-group"><label>Vector x0</label><input id="vec_x0" value="0, 0, 0, 0"></div>
+            `,
+            solve: solveSeidel
+        },
+        error_calc: {
+            title: "Bài toán: Sai số Thể tích", desc: "Giải ngược bài toán sai số: Tính sai số cho phép của bán kính r và π.",
+            inputs: `
+                <div class="input-grid">
+                    <div class="form-group"><label>Bán kính (r)</label><input id="val_r" value="1.17688030"></div>
+                    <div class="form-group"><label>Sai số tối đa (ΔV)</label><input id="val_err" value="1e-7"></div>
+                </div>
+            `,
+            solve: solveErrorCalc
+        }
+    };
+
+    // --- UI CONTROLLER ---
+    function showModule(key) {
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        
+        const m = modules[key];
+        document.getElementById('m-title').innerText = m.title;
+        document.getElementById('m-desc').innerText = m.desc;
+        
+        let extraParams = key !== 'error_calc' ? `
+            <div class="input-grid" style="background:#f1f3f5; padding:15px; border-radius:5px; margin-top:15px;">
+                <div class="form-group"><label>Tiêu chí dừng</label>
+                <select id="stop_criteria"><option value="abs">Sai số tuyệt đối (Delta x)</option><option value="rel">Sai số tương đối</option></select></div>
+                <div class="form-group"><label>Ngưỡng (Tol)</label><input id="val_tol" value="1e-5"></div>
+            </div>` : "";
+
+        document.getElementById('m-inputs').innerHTML = m.inputs + extraParams + `<button onclick="modules['${key}'].solve()">TÍNH TOÁN ( ͡° ͜ʖ ͡°)</button>`;
+        document.getElementById('m-results').innerHTML = "";
+
+        if (key === 'newton_sys') renderSysInputs('f');
+        if (key === 'fixed_sys') renderSysInputs('g');
+    }
+
+    window.renderSysInputs = function(type) {
+        const n = parseInt(document.getElementById('sys_n').value);
+        const oldFuncs = [], oldVals = [];
+        // Lưu giá trị cũ để không bị mất lúc người dùng thay đổi dropdown
+        for(let i=1; i<=5; i++) {
+            let fEl = document.getElementById('func_'+i);
+            let vEl = document.getElementById('val_x'+i);
+            oldFuncs[i] = fEl ? fEl.value : null;
+            oldVals[i] = vEl ? vEl.value : null;
+        }
+
+        let html = '<div class="input-grid">';
+        for(let i=1; i<=n; i++) {
+            let defVal = oldFuncs[i] !== null ? oldFuncs[i] : (type === 'f' ? (i===1?"x1^2+x2^2-1":i===2?"x1^3-x2":"x"+i+"-0.5") : (i===1?"0.2*cos(x1^2+x2^2)":i===2?"0.25*sin(x1*x2)":"0.5*x"+i));
+            html += '<div class="form-group"><label>' + (type==='f' ? 'Hàm f'+i+'(x1..x'+n+') = 0' : 'x'+i+' = g'+i+'(x1..x'+n+ ')') + '</label><input id="func_'+i+'" value="'+defVal+'"></div>';
+        }
+        html += '</div><div class="input-grid">';
+        for(let i=1; i<=n; i++) {
+            let defVal = oldVals[i] !== null ? oldVals[i] : "0.5";
+            html += '<div class="form-group"><label>x'+i+'_0 (Giá trị đầu)</label><input id="val_x'+i+'" value="'+defVal+'"></div>';
+        }
+        html += '</div>';
+        document.getElementById('dynamic_sys_inputs').innerHTML = html;
+    }
+
+    function checkError(x_new, x_old, tol, criteria) {
+        let max_diff = 0, max_val = 0;
+        if(Array.isArray(x_new)) {
+            for(let i=0; i<x_new.length; i++) {
+                max_diff = Math.max(max_diff, Math.abs(x_new[i] - x_old[i]));
+                max_val = Math.max(max_val, Math.abs(x_new[i]));
+            }
+        } else {
+            max_diff = Math.abs(x_new - x_old);
+            max_val = Math.abs(x_new);
+        }
+        let err = criteria === 'abs' ? max_diff : (max_diff / (max_val + 1e-15));
+        return { err: err, isStop: err < tol, diff: max_diff };
+    }
+
+    // ==========================================
+    // CÁC HÀM GIẢI TÍCH SỐ CHI TIẾT
+    // ==========================================
+
+    function solveBisection() {
+        const out = document.getElementById('m-results');
+        try {
+            const f_str = document.getElementById('f_x').value;
+            let a = parseFloat(document.getElementById('val_a').value);
+            let b = parseFloat(document.getElementById('val_b').value);
+            const tol = parseFloat(document.getElementById('val_tol').value);
+            const criteria = document.getElementById('stop_criteria').value;
+
+            const f = (x) => math.evaluate(f_str, {x});
+            const fa = f(a), fb = f(b);
+
+            let html = `<h3 class="section-title">1. Biện luận</h3>
+                        <div class="logic-step">f(a) = ${formatNum(fa)}, f(b) = ${formatNum(fb)}. Tích = ${formatNum(fa*fb)}.</div>`;
+            
+            if (fa * fb >= 0) {
+                out.innerHTML = html + `<div class="error-box">LỖI: Điều kiện f(a)*f(b) < 0 KHÔNG thỏa mãn!</div>`; return;
+            }
+
+            html += `<h3 class="section-title">2. Lặp</h3><div class="table-wrapper"><table><tr><th>Lặp</th><th>a</th><th>b</th><th>c</th><th>f(a)</th><th>f(c)</th><th>Sai số</th></tr>`;
+            
+            let c, err, k=0;
+            while(k < 100) {
+                c = (a+b)/2;
+                let fc = f(c);
+                err = Math.abs(b-a)/2;
+                if(criteria === 'rel') err = err / Math.abs(c);
+                
+                html += `<tr><td>${k+1}</td><td>${formatNum(a)}</td><td>${formatNum(b)}</td><td class="highlight">${formatNum(c)}</td><td>${formatNum(f(a))}</td><td>${formatNum(fc)}</td><td>${err.toExponential(4)}</td></tr>`;
+                
+                if(err < tol || fc === 0) break;
+                if(f(a)*fc < 0) b = c; else a = c;
+                k++;
+            }
+            out.innerHTML = html + `</table></div><div class="success-box">Nghiệm: c ≈ ${formatNum(c, 8)}</div>`;
+        } catch(e) { out.innerHTML = `<div class="error-box">Lỗi: ${e.message}</div>`; }
+    }
+
+    function solveNewton1() {
+        const out = document.getElementById('m-results');
+        try {
+            const f_str = document.getElementById('f_x').value;
+            let x0 = parseFloat(document.getElementById('val_x0').value);
+            const tol = parseFloat(document.getElementById('val_tol').value);
+            const criteria = document.getElementById('stop_criteria').value;
+
+            const df_str = math.derivative(f_str, 'x').toString();
+            const f = (x) => math.evaluate(f_str, {x});
+            const df = (x) => math.evaluate(df_str, {x});
+
+            let html = `<h3 class="section-title">1. Thiết lập</h3>
+                        <div class="logic-step">Hàm số: \\( f(x) = ${f_str} \\)<br>Đạo hàm: \\( f'(x) = ${df_str} \\)</div>
+                        <h3 class="section-title">2. Lặp</h3>
+                        <div class="table-wrapper"><table><tr><th>k</th><th>x_k</th><th>f(x_k)</th><th>f'(x_k)</th><th>x_{k+1}</th><th>Sai số</th></tr>`;
+            
+            let x = x0, k=0;
+            while(k < 50) {
+                let fx = f(x), dfx = df(x);
+                if(dfx === 0) throw new Error("Đạo hàm bằng 0, thuật toán thất bại!");
+                let x_new = x - fx/dfx;
+                let check = checkError(x_new, x, tol, criteria);
+                
+                html += `<tr><td>${k}</td><td>${formatNum(x)}</td><td>${formatNum(fx)}</td><td>${formatNum(dfx)}</td><td class="highlight">${formatNum(x_new)}</td><td>${check.err.toExponential(4)}</td></tr>`;
+                
+                if(check.isStop) { x = x_new; break; }
+                x = x_new; k++;
+            }
+            out.innerHTML = html + `</table></div><div class="success-box">Nghiệm: x ≈ ${formatNum(x, 8)}</div>`;
+            renderMath();
+        } catch(e) { out.innerHTML = `<div class="error-box">Lỗi: ${e.message}</div>`; }
+    }
+
+    function solveSecant() {
+        const out = document.getElementById('m-results');
+        try {
+            const f_str = document.getElementById('f_x').value;
+            let a = parseFloat(document.getElementById('val_a').value);
+            let b = parseFloat(document.getElementById('val_b').value);
+            const tol = parseFloat(document.getElementById('val_tol').value);
+            const criteria = document.getElementById('stop_criteria').value;
+
+            const df2_str = math.derivative(math.derivative(f_str, 'x'), 'x').toString();
+            const f = (x) => math.evaluate(f_str, {x});
+            const df2 = (x) => math.evaluate(df2_str, {x});
+
+            if(f(a)*f(b) >= 0) throw new Error("Điều kiện f(a)*f(b) < 0 không thỏa mãn!");
+
+            let d, x;
+            if (f(a) * df2(a) > 0) { d = a; x = b; } else { d = b; x = a; }
+
+            let html = `<h3 class="section-title">1. Biện luận điểm Fourier</h3>
+                        <div class="logic-step">Đạo hàm bậc 2: \\( f''(x) = ${df2_str} \\)<br>
+                        Kiểm tra: f(a)*f''(a) = ${formatNum(f(a)*df2(a))}.<br>
+                        Chọn điểm cố định d = ${d}, điểm xuất phát x_0 = ${x}.</div>
+                        <h3 class="section-title">2. Lặp</h3>
+                        <div class="table-wrapper"><table><tr><th>k</th><th>x_n</th><th>f(x_n)</th><th>x_{n+1}</th><th>Sai số</th></tr>`;
+            
+            let k=0;
+            while(k < 50) {
+                let fx = f(x), fd = f(d);
+                let x_new = x - fx * (d - x) / (fd - fx);
+                let check = checkError(x_new, x, tol, criteria);
+                
+                html += `<tr><td>${k}</td><td>${formatNum(x)}</td><td>${formatNum(fx)}</td><td class="highlight">${formatNum(x_new)}</td><td>${check.err.toExponential(4)}</td></tr>`;
+                
+                if(check.isStop) { x = x_new; break; }
+                x = x_new; k++;
+            }
+            out.innerHTML = html + `</table></div><div class="success-box">Nghiệm: x ≈ ${formatNum(x, 8)}</div>`;
+            renderMath();
+        } catch(e) { out.innerHTML = `<div class="error-box">Lỗi: ${e.message}</div>`; }
+    }
+
+    function solveFixed1() {
+        const out = document.getElementById('m-results');
+        try {
+            const g_str = document.getElementById('g_x').value;
+            let x0 = parseFloat(document.getElementById('val_x0').value);
+            const tol = parseFloat(document.getElementById('val_tol').value);
+            const criteria = document.getElementById('stop_criteria').value;
+
+            const dg_str = math.derivative(g_str, 'x').toString();
+            const g = (x) => math.evaluate(g_str, {x});
+            const dg = (x) => math.evaluate(dg_str, {x});
+
+            let q = Math.abs(dg(x0));
+            let html = `<h3 class="section-title">1. Biện luận hội tụ</h3>
+                        <div class="logic-step">Đạo hàm: \\( g'(x) = ${dg_str} \\)<br>
+                        Tại x0 = ${x0}: |g'(x0)| = ${formatNum(q)}. `;
+            if(q >= 1) html += `<span style="color:red;font-weight:bold;">CẢNH BÁO: q >= 1, phương pháp có thể phân kỳ!</span></div>`;
+            else html += `q < 1, thỏa mãn điều kiện hội tụ.</div>`;
+
+            html += `<h3 class="section-title">2. Lặp</h3>
+                        <div class="table-wrapper"><table><tr><th>k</th><th>x_n</th><th>x_{n+1}</th><th>Sai số</th></tr>`;
+            
+            let x = x0, k=0;
+            while(k < 50) {
+                let x_new = g(x);
+                let check = checkError(x_new, x, tol, criteria);
+                
+                html += `<tr><td>${k+1}</td><td>${formatNum(x)}</td><td class="highlight">${formatNum(x_new)}</td><td>${check.err.toExponential(4)}</td></tr>`;
+                
+                if(check.err > 1e5) throw new Error("Phân kỳ trầm trọng ( ͡° ͜ʖ ͡°)");
+                if(check.isStop) { x = x_new; break; }
+                x = x_new; k++;
+            }
+            out.innerHTML = html + `</table></div><div class="success-box">Nghiệm: x ≈ ${formatNum(x, 8)}</div>`;
+            renderMath();
+        } catch(e) { out.innerHTML = `<div class="error-box">Lỗi: ${e.message}</div>`; }
+    }
+
+    function solveNewtonSys() {
+        const out = document.getElementById('m-results');
+        try {
+            const tol = parseFloat(document.getElementById('val_tol').value);
+            const criteria = document.getElementById('stop_criteria').value;
+
+            const n = parseInt(document.getElementById('sys_n').value);
+            let X = [];
+            let F_str = [];
+            let J_str = []; // Ma trận Jacobian (mảng chứa các biểu thức đạo hàm)
+
+            for(let i=1; i<=n; i++) {
+                X.push(parseFloat(document.getElementById('val_x'+i).value));
+                let f_i = document.getElementById('func_'+i).value;
+                F_str.push(f_i);
+                
+                let row = [];
+                for(let j=1; j<=n; j++) {
+                    row.push(math.derivative(f_i, 'x'+j));
+                }
+                J_str.push(row);
+            }
+
+            let F_compiled = F_str.map(f => math.compile(f));
+
+            let html = `<h3 class="section-title">1. Ma trận Jacobian Ký hiệu</h3>
+                        <div class="logic-step">J(X) = [<br>`;
+            for(let i=0; i<n; i++) {
+                html += `&nbsp;&nbsp;[ ` + J_str[i].map((deriv, j) => `\\( \\frac{\\partial f_{${i+1}}}{\\partial x_{${j+1}}} = ${deriv.toString()} \\)`).join(' , ') + ` ]<br>`;
+            }
+            html += `]</div><h3 class="section-title">2. Lặp Newton</h3>
+                        <div class="table-wrapper"><table><tr><th>k</th>` + 
+                        Array.from({length:n}, (_, i) => `<th>x${i+1}_k</th>`).join('') +
+                        Array.from({length:n}, (_, i) => `<th>Δx${i+1}</th>`).join('') + 
+                        `<th>Sai số max(|Δ|)</th></tr>`;
+
+            let k = 0;
+            while(k < 20) {
+                let scope = {};
+                for(let i=1; i<=n; i++) scope['x'+i] = X[i-1];
+
+                let F_val = F_compiled.map(f => f.evaluate(scope));
+                let J_val = Array(n).fill(0).map(() => Array(n).fill(0));
+                for(let i=0; i<n; i++) {
+                    for(let j=0; j<n; j++) {
+                        J_val[i][j] = J_str[i][j].evaluate(scope);
+                    }
+                }
+                
+                let invJ;
+                try { invJ = math.inv(J_val); } catch(err) { throw new Error("Ma trận Jacobian suy biến (Det=0) hoặc quá trình tính lỗi!"); }
+                
+                let Delta = math.multiply(invJ, math.multiply(F_val, -1));
+                let X_new = X.map((x, idx) => x + Delta[idx]);
+                
+                let check = checkError(X_new, X, tol, criteria);
+                
+                html += `<tr><td>${k}</td>` + 
+                        X.map(v => `<td>${formatNum(v)}</td>`).join('') + 
+                        Delta.map(v => `<td>${formatNum(v)}</td>`).join('') + 
+                        `<td>${check.err.toExponential(4)}</td></tr>`;
+                
+                if(check.isStop) { X = X_new; break; }
+                X = X_new; k++;
+            }
+            out.innerHTML = html + `</table></div><div class="success-box">Nghiệm:<br>` + 
+                                    X.map((v, i) => `x${i+1} ≈ ${formatNum(v, 8)}`).join('<br>') + 
+                                    `</div>`;
+            renderMath();
+        } catch(e) { out.innerHTML = `<div class="error-box">Lỗi: ${e.message}</div>`; }
+    }
+
+    function solveFixedSys() {
+        const out = document.getElementById('m-results');
+        try {
+            const tol = parseFloat(document.getElementById('val_tol').value);
+            const criteria = document.getElementById('stop_criteria').value;
+
+            const n = parseInt(document.getElementById('sys_n').value);
+            let X = [];
+            let G_compiled = [];
+
+            for(let i=1; i<=n; i++) {
+                X.push(parseFloat(document.getElementById('val_x'+i).value));
+                G_compiled.push(math.compile(document.getElementById('func_'+i).value));
+            }
+
+            let html = `<h3 class="section-title">Quá trình lặp đơn</h3>
+                        <div class="table-wrapper"><table><tr><th>k</th>` + 
+                        Array.from({length:n}, (_, i) => `<th>x${i+1}_k</th>`).join('') +
+                        Array.from({length:n}, (_, i) => `<th>x${i+1}_{k+1}</th>`).join('') +
+                        `<th>Sai số (Max)</th></tr>`;
+            
+            let k = 0;
+            while(k < 50) {
+                let scope = {};
+                for(let i=1; i<=n; i++) scope['x'+i] = X[i-1];
+
+                let X_new = G_compiled.map(g => g.evaluate(scope));
+                let check = checkError(X_new, X, tol, criteria);
+                
+                html += `<tr><td>${k+1}</td>` + 
+                        X.map(v => `<td>${formatNum(v)}</td>`).join('') + 
+                        X_new.map(v => `<td class="highlight">${formatNum(v)}</td>`).join('') + 
+                        `<td>${check.err.toExponential(4)}</td></tr>`;
+                
+                if(check.err > 1e5) throw new Error("Phân kỳ!");
+                if(check.isStop) { X = X_new; break; }
+                X = X_new; k++;
+            }
+            out.innerHTML = html + `</table></div><div class="success-box">Nghiệm:<br>` +
+                                    X.map((v, i) => `x${i+1} ≈ ${formatNum(v, 8)}`).join('<br>') +
+                                    `</div>`;
+        } catch(e) { out.innerHTML = `<div class="error-box">Lỗi: ${e.message}</div>`; }
+    }
+
+    function renderMatrixStr(mat) {
+        return mat.map(r => r.map(v => formatNum(v, 4).padStart(10)).join(' ')).join('\n');
+    }
+
+    function solveGauss() {
+        const out = document.getElementById('m-results');
+        try {
+            let A = parseMatrix(document.getElementById('mat_a').value);
+            let b = parseVector(document.getElementById('vec_b').value);
+            const n = b.length;
+            let Ab = A.map((r, i) => [...r, b[i]]);
+
+            let html = `<h3 class="section-title">1. Khử Gauss (Forward Elimination)</h3>`;
+            html += `<div class="matrix-display">Ban đầu:\n${renderMatrixStr(Ab)}</div>`;
+
+            for (let i = 0; i < n; i++) {
+                let maxRow = i;
+                for (let k = i + 1; k < n; k++) if (Math.abs(Ab[k][i]) > Math.abs(Ab[maxRow][i])) maxRow = k;
+                
+                if(Math.abs(Ab[maxRow][i]) < 1e-12) throw new Error("Hệ vô nghiệm hoặc vô số nghiệm!");
+                
+                if (maxRow !== i) {
+                    [Ab[i], Ab[maxRow]] = [Ab[maxRow], Ab[i]];
+                    html += `<div class="logic-step">Hoán vị hàng ${i+1} và ${maxRow+1} (Pivoting)</div>`;
+                }
+
+                for (let j = i + 1; j < n; j++) {
+                    let m = Ab[j][i] / Ab[i][i];
+                    for (let k = i; k <= n; k++) Ab[j][k] -= m * Ab[i][k];
+                    html += `<i>Hàng ${j+1} = Hàng ${j+1} - (${formatNum(m)}) * Hàng ${i+1}</i><br>`;
+                }
+                html += `<div class="matrix-display">${renderMatrixStr(Ab)}</div>`;
+            }
+
+            html += `<h3 class="section-title">2. Thế ngược (Back Substitution)</h3><div class="logic-step">`;
+            let x = new Array(n).fill(0);
+            for (let i = n - 1; i >= 0; i--) {
+                let sum = 0;
+                for (let j = i + 1; j < n; j++) sum += Ab[i][j] * x[j];
+                x[i] = (Ab[i][n] - sum) / Ab[i][i];
+                html += `x[${i+1}] = ${formatNum(x[i])}<br>`;
+            }
+            out.innerHTML = html + `</div><div class="success-box">X = [ ${x.map(v=>formatNum(v)).join(', ')} ]</div>`;
+        } catch(e) { out.innerHTML = `<div class="error-box">Lỗi: ${e.message}</div>`; }
+    }
+
+    function solveGaussJordan() {
+        const out = document.getElementById('m-results');
+        try {
+            let A = parseMatrix(document.getElementById('mat_a').value);
+            let b = parseVector(document.getElementById('vec_b').value);
+            const n = b.length;
+            let Ab = A.map((r, i) => [...r, b[i]]);
+
+            let html = `<h3 class="section-title">Quá trình Gauss-Jordan</h3>`;
+            html += `<div class="matrix-display">Ban đầu:\n${renderMatrixStr(Ab)}</div>`;
+
+            for (let i = 0; i < n; i++) {
+                let pivot = Ab[i][i];
+                if(Math.abs(pivot) < 1e-12) throw new Error("Chưa hỗ trợ hoán vị cho Gauss-Jordan, phần tử chéo = 0!");
+                
+                html += `<i>Hàng ${i+1} = Hàng ${i+1} / ${formatNum(pivot)}</i><br>`;
+                for (let k = i; k <= n; k++) Ab[i][k] /= pivot;
+
+                for (let j = 0; j < n; j++) {
+                    if (i !== j) {
+                        let m = Ab[j][i];
+                        for (let k = i; k <= n; k++) Ab[j][k] -= m * Ab[i][k];
+                        html += `<i>Hàng ${j+1} = Hàng ${j+1} - (${formatNum(m)}) * Hàng ${i+1}</i><br>`;
+                    }
+                }
+                html += `<div class="matrix-display">${renderMatrixStr(Ab)}</div>`;
+            }
+            let x = Ab.map(r => r[n]);
+            out.innerHTML = html + `<div class="success-box">X = [ ${x.map(v=>formatNum(v)).join(', ')} ]</div>`;
+        } catch(e) { out.innerHTML = `<div class="error-box">Lỗi: ${e.message}</div>`; }
+    }
+
+    function solveLU() {
+        const out = document.getElementById('m-results');
+        try {
+            let A = parseMatrix(document.getElementById('mat_a').value);
+            let b = parseVector(document.getElementById('vec_b').value);
+            const n = A.length;
+            let L = Array.from({length:n}, ()=>Array(n).fill(0));
+            let U = Array.from({length:n}, ()=>Array(n).fill(0));
+
+            let html = `<h3 class="section-title">1. Phân tách Doolittle (A = LU)</h3>`;
+            for (let i = 0; i < n; i++) {
+                L[i][i] = 1; 
+                for (let k = i; k < n; k++) {
+                    let sum = 0;
+                    for (let j = 0; j < i; j++) sum += L[i][j] * U[j][k];
+                    U[i][k] = A[i][k] - sum;
+                }
+                for (let k = i + 1; k < n; k++) {
+                    let sum = 0;
+                    for (let j = 0; j < i; j++) sum += L[k][j] * U[j][i];
+                    L[k][i] = (A[k][i] - sum) / U[i][i];
+                }
+            }
+            html += `<div class="logic-step"><b>Ma trận L:</b><br><div class="matrix-display">${renderMatrixStr(L)}</div></div>`;
+            html += `<div class="logic-step"><b>Ma trận U:</b><br><div class="matrix-display">${renderMatrixStr(U)}</div></div>`;
+
+            html += `<h3 class="section-title">2. Giải Ly = b (Thế tiến)</h3>`;
+            let y = new Array(n).fill(0);
+            for(let i=0; i<n; i++) {
+                let sum = 0;
+                for(let j=0; j<i; j++) sum += L[i][j]*y[j];
+                y[i] = b[i] - sum;
+            }
+            html += `<div class="logic-step">Y = [ ${y.map(v=>formatNum(v)).join(', ')} ]</div>`;
+
+            html += `<h3 class="section-title">3. Giải Ux = y (Thế ngược)</h3>`;
+            let x = new Array(n).fill(0);
+            for(let i=n-1; i>=0; i--) {
+                let sum = 0;
+                for(let j=i+1; j<n; j++) sum += U[i][j]*x[j];
+                x[i] = (y[i] - sum) / U[i][i];
+            }
+            out.innerHTML = html + `<div class="success-box">X = [ ${x.map(v=>formatNum(v)).join(', ')} ]</div>`;
+        } catch(e) { out.innerHTML = `<div class="error-box">Lỗi: ${e.message}</div>`; }
+    }
+
+    function solveCholesky() {
+        const out = document.getElementById('m-results');
+        try {
+            let A = parseMatrix(document.getElementById('mat_a').value);
+            let b = parseVector(document.getElementById('vec_b').value);
+            const n = A.length;
+            let L = Array.from({length:n}, ()=>Array(n).fill(0));
+
+            if (A.length !== A[0].length || A.length !== b.length) {
+                throw new Error("Kích thước ma trận hoặc vector không hợp lệ!");
+            }
+
+            let html = `<h3 class="section-title">1. Phân tách A = L.L^T</h3>`;
+            html += `<div class="logic-step">Công thức phần tử đường chéo: \\( L_{jj} = \\sqrt{A_{jj} - \\sum_{k=1}^{j-1} L_{jk}^2} \\)<br>
+                     Công thức phần tử ngoài đường chéo: \\( L_{ij} = \\frac{1}{L_{jj}} \\left(A_{ij} - \\sum_{k=1}^{j-1} L_{ik} L_{jk}\\right) \\)</div>`;
+            
+            html += `<ul class="math-list">`;
+            for (let j = 0; j < n; j++) {
+                let sumDiag = 0;
+                for (let k = 0; k < j; k++) sumDiag += L[j][k] * L[j][k];
+                let valDiag = A[j][j] - sumDiag;
+                
+                if(valDiag <= 0) throw new Error(`Ma trận không xác định dương tại bước j=${j+1} (giá trị trong căn = ${formatNum(valDiag)} <= 0)!`);
+                
+                L[j][j] = Math.sqrt(valDiag);
+                html += `<li>\\( L_{${j+1}${j+1}} = \\sqrt{${A[j][j]} - ${formatNum(sumDiag)}} = ${formatNum(L[j][j])} \\)</li>`;
+
+                for (let i = j + 1; i < n; i++) {
+                    let sumOff = 0;
+                    for (let k = 0; k < j; k++) sumOff += L[i][k] * L[j][k];
+                    L[i][j] = (A[i][j] - sumOff) / L[j][j];
+                    html += `<li>\\( L_{${i+1}${j+1}} = \\frac{${A[i][j]} - ${formatNum(sumOff)}}{${formatNum(L[j][j])}} = ${formatNum(L[i][j])} \\)</li>`;
+                }
+            }
+            html += `</ul>`;
+            
+            html += `<div class="logic-step"><b>Ma trận L thu được:</b><br><div class="matrix-display">${renderMatrixStr(L)}</div></div>`;
+            
+            html += `<h3 class="section-title">2. Giải hệ L.y = b (Thế tiến)</h3>`;
+            let y = new Array(n).fill(0);
+            html += `<ul class="math-list">`;
+            for(let i=0; i<n; i++) {
+                let sum = 0; 
+                for(let j=0; j<i; j++) sum += L[i][j]*y[j];
+                y[i] = (b[i] - sum)/L[i][i];
+                html += `<li>\\( y_{${i+1}} = \\frac{${b[i]} - ${formatNum(sum)}}{${formatNum(L[i][i])}} = ${formatNum(y[i])} \\)</li>`;
+            }
+            html += `</ul><div class="logic-step"><b>Vector Y:</b> [ ${y.map(v=>formatNum(v)).join(', ')} ]</div>`;
+
+            html += `<h3 class="section-title">3. Giải hệ L^T.x = y (Thế ngược)</h3>`;
+            let x = new Array(n).fill(0);
+            html += `<ul class="math-list">`;
+            for(let i=n-1; i>=0; i--) {
+                let sum = 0; 
+                for(let j=i+1; j<n; j++) sum += L[j][i]*x[j]; 
+                x[i] = (y[i] - sum)/L[i][i];
+                html += `<li>\\( x_{${i+1}} = \\frac{${formatNum(y[i])} - ${formatNum(sum)}}{${formatNum(L[i][i])}} = ${formatNum(x[i])} \\)</li>`;
+            }
+            html += `</ul>`;
+
+            out.innerHTML = html + `<div class="success-box">Kết luận Vector X = [ ${x.map(v=>formatNum(v)).join(', ')} ]</div>`;
+            renderMath();
+        } catch(e) { 
+            out.innerHTML = `<div class="error-box">Lỗi thuật toán: ${e.message}</div>`; 
+            renderMath();
+        }
+    }
+
+    function solveJacobi() {
+        const out = document.getElementById('m-results');
+        try {
+            let A = parseMatrix(document.getElementById('mat_a').value);
+            let b = parseVector(document.getElementById('vec_b').value);
+            let X = parseVector(document.getElementById('vec_x0').value);
+            const tol = parseFloat(document.getElementById('val_tol').value);
+            const criteria = document.getElementById('stop_criteria').value;
+            const n = A.length;
+
+            let html = `<h3 class="section-title">1. Biện luận chéo trội</h3><div class="logic-step">`;
+            let isStrict = true;
+            for(let i=0; i<n; i++) {
+                let sum = 0;
+                for(let j=0; j<n; j++) if(i!==j) sum += Math.abs(A[i][j]);
+                html += `Hàng ${i+1}: |${A[i][i]}| vs ${sum}<br>`;
+                if(Math.abs(A[i][i]) <= sum) isStrict = false;
+            }
+            if(!isStrict) html += `<span style="color:red;font-weight:bold;">Cảnh báo: Ma trận không chéo trội nghiêm ngặt, có thể phân kỳ!</span>`;
+            else html += `<span style="color:green;font-weight:bold;">Ma trận chéo trội nghiêm ngặt -> Hội tụ chắc chắn!</span>`;
+            html += `</div><h3 class="section-title">2. Lặp Jacobi</h3>`;
+
+            html += `<div class="table-wrapper"><table><tr><th>Lặp</th>` + X.map((_,i)=>`<th>x_${i+1}</th>`).join('') + `<th>Sai số</th></tr>`;
+            
+            let k=0;
+            while(k < 50) {
+                let X_new = new Array(n).fill(0);
+                for(let i=0; i<n; i++) {
+                    let sum = 0;
+                    for(let j=0; j<n; j++) if(i!==j) sum += A[i][j]*X[j];
+                    X_new[i] = (b[i] - sum)/A[i][i];
+                }
+                let check = checkError(X_new, X, tol, criteria);
+                
+                html += `<tr><td>${k+1}</td>` + X_new.map(v=>`<td>${formatNum(v)}</td>`).join('') + `<td>${check.err.toExponential(4)}</td></tr>`;
+                
+                if(check.isStop) { X = X_new; break; }
+                X = X_new; k++;
+            }
+            out.innerHTML = html + `</table></div><div class="success-box">X = [ ${X.map(v=>formatNum(v)).join(', ')} ]</div>`;
+        } catch(e) { out.innerHTML = `<div class="error-box">Lỗi: ${e.message}</div>`; }
+    }
+
+    function solveSeidel() {
+        const out = document.getElementById('m-results');
+        try {
+            let A = parseMatrix(document.getElementById('mat_a').value);
+            let b = parseVector(document.getElementById('vec_b').value);
+            let X = parseVector(document.getElementById('vec_x0').value);
+            const tol = parseFloat(document.getElementById('val_tol').value);
+            const criteria = document.getElementById('stop_criteria').value;
+            const n = A.length;
+
+            let html = `<h3 class="section-title">Quá trình lặp Gauss-Seidel</h3>
+                        <div class="table-wrapper"><table><tr><th>Lặp</th>` + X.map((_,i)=>`<th>x_${i+1}</th>`).join('') + `<th>Sai số</th></tr>`;
+            
+            let k=0;
+            while(k < 50) {
+                let X_new = [...X]; 
+                for(let i=0; i<n; i++) {
+                    let sum = 0;
+                    for(let j=0; j<i; j++) sum += A[i][j]*X_new[j]; 
+                    for(let j=i+1; j<n; j++) sum += A[i][j]*X[j];   
+                    X_new[i] = (b[i] - sum)/A[i][i];
+                }
+                let check = checkError(X_new, X, tol, criteria);
+                
+                html += `<tr><td>${k+1}</td>` + X_new.map(v=>`<td>${formatNum(v)}</td>`).join('') + `<td>${check.err.toExponential(4)}</td></tr>`;
+                
+                if(check.isStop) { X = [...X_new]; break; }
+                X = [...X_new]; k++;
+            }
+            out.innerHTML = html + `</table></div><div class="success-box">X = [ ${X.map(v=>formatNum(v)).join(', ')} ]</div>`;
+        } catch(e) { out.innerHTML = `<div class="error-box">Lỗi: ${e.message}</div>`; }
+    }
+
+    function solveErrorCalc() {
+        const out = document.getElementById('m-results');
+        try {
+            let x_val = parseFloat(document.getElementById('val_r').value);
+            let max_error = parseFloat(document.getElementById('val_err').value);
+
+            let dV_dx = 4 * Math.PI * (x_val**2);
+            let dV_dpi = (4/3) * (x_val**3);
+            
+            let delta_x = (max_error / 2) / dV_dx;
+            let delta_pi = (max_error / 2) / dV_dpi;
+
+            let html = `<h3 class="section-title">Phân tích sai số (Nguyên lý tác động đều)</h3>
+                        <div class="logic-step">
+                        Thể tích cầu: \\( V = \\frac{4}{3}\\pi r^3 \\)<br><br>
+                        Đạo hàm riêng theo bán kính r: \\( \\frac{\\partial V}{\\partial r} = 4\\pi r^2 = ${formatNum(dV_dx)} \\)<br>
+                        Đạo hàm riêng theo số pi: \\( \\frac{\\partial V}{\\partial \\pi} = \\frac{4}{3}r^3 = ${formatNum(dV_dpi)} \\)<br><br>
+                        Chia đều sai số: \\( \\Delta V_r = \\Delta V_\\pi = \\frac{${max_error}}{2} \\)
+                        </div>
+                        <div class="success-box">
+                        => Sai số tuyệt đối cho phép của r: <b>Δr ≤ ${delta_x.toExponential(8)}</b><br>
+                        => Sai số tuyệt đối cho phép của π: <b>Δπ ≤ ${delta_pi.toExponential(8)}</b>
+                        </div>`;
+            out.innerHTML = html;
+            renderMath();
+        } catch(e) { out.innerHTML = `<div class="error-box">Lỗi: ${e.message}</div>`; }
+    }
+
+    // Mặc định hiển thị
+    window.onload = () => showModule('bisection');
+</script>
+</body>
+</html>
